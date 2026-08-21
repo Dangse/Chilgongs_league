@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>칠공스 리그 대진표</title>
+<style>
+  :root{
+    --table:#0e3a2b; --table-deep:#092b1f; --line:#215f47;
+    --ball:#f6f3ea; --ink:#dfe9e2; --ink-dim:#8fae9d;
+    --paddle:#e8722c; --win:#ffd166; --up:#7fd8a4; --down:#e07b7b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',system-ui,sans-serif;
+    background:radial-gradient(1200px 500px at 50% -100px,#14503a 0%,transparent 60%),var(--table-deep);
+    color:var(--ink);min-height:100vh;padding:20px 14px 60px;
+  }
+  .wrap{max-width:940px;margin:0 auto}
+  .eyebrow{color:var(--paddle);font-weight:700;font-size:13px;letter-spacing:.12em}
+  h1{font-size:clamp(26px,5vw,38px);font-weight:800;margin:4px 0 10px;letter-spacing:-.02em}
+  .net{height:2px;background:repeating-linear-gradient(90deg,var(--line) 0 8px,transparent 8px 14px);margin:16px 0 20px}
+
+  .roundbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .rbtn{padding:10px 18px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink-dim);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer}
+  .rbtn.active{background:var(--paddle);border-color:var(--paddle);color:#1c1207}
+  .rbtn .tag{font-size:11px;font-weight:700;opacity:.8;margin-left:5px}
+
+  .info{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 6px}
+  .chip{background:var(--table);border:1px solid var(--line);border-radius:12px;padding:11px 16px;font-size:13.5px;line-height:1.5;flex:1;min-width:200px}
+  .chip b{color:var(--ball);font-size:15px;display:block}
+  .chip .accent{color:var(--paddle);font-weight:800}
+  .chip .gold{color:var(--win);font-weight:800}
+  .progress{height:7px;background:rgba(33,95,71,.5);border-radius:99px;margin-top:8px;overflow:hidden}
+  .progress i{display:block;height:100%;background:var(--paddle);border-radius:99px}
+
+  .meets{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px}
+  .mbtn{padding:9px 15px;border-radius:10px;border:1px solid var(--line);background:var(--table);color:var(--ink);font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;line-height:1.4;text-align:left}
+  .mbtn small{display:block;font-weight:600;font-size:11.5px;color:var(--ink-dim)}
+  .mbtn.active{border-color:var(--paddle);color:var(--paddle)}
+  .mbtn.active small{color:var(--paddle)}
+  .mbtn.future{opacity:.55}
+  .mbtn .lockico{margin-left:4px}
+  .crumb{font-size:12.5px;color:var(--ink-dim);margin:14px 0 4px}
+  .crumb b{color:var(--paddle)}
+
+  .tabs{display:flex;border-bottom:1px solid var(--line);margin:16px 0 20px}
+  .tab{flex:1;text-align:center;padding:12px 8px;color:var(--ink-dim);font-weight:700;font-size:15px;cursor:pointer;border:none;background:none;border-bottom:3px solid transparent;font-family:inherit}
+  .tab.active{color:var(--ball);border-bottom-color:var(--paddle)}
+
+  label{display:block;font-size:13px;color:var(--ink-dim);margin:12px 0 6px;font-weight:600}
+  select,input[type=text],input[type=password]{width:100%;padding:13px 14px;font-size:16px;font-family:inherit;background:var(--table);color:var(--ball);border:1px solid var(--line);border-radius:10px}
+  .hint{font-size:13px;color:var(--ink-dim);margin:12px 0 14px;line-height:1.6}
+  .lock{font-size:13px;color:var(--win);background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.3);border-radius:10px;padding:11px 14px;margin:12px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .lock input{flex:1;min-width:130px;padding:9px 12px;font-size:14px}
+  .lock button{padding:9px 16px;font-size:13px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 2px;border-bottom:1px solid rgba(33,95,71,.45)}
+  .row .name{font-size:16px;font-weight:700}
+  .scores{display:flex;gap:6px}
+  .sbtn{width:42px;height:42px;border-radius:9px;border:1px solid var(--line);background:transparent;color:var(--ink-dim);font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+  .sbtn.sel{background:var(--paddle);border-color:var(--paddle);color:#1c1207}
+  .sbtn:disabled{cursor:default;opacity:.85}
+  .savebar{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;align-items:center}
+  .status{font-size:13px;color:var(--ink-dim);margin-right:auto}
+  .btn{padding:13px 26px;border-radius:10px;border:none;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer}
+  .btn-primary{background:var(--paddle);color:#1c1207}
+  .btn-primary:disabled{opacity:.5}
+  .btn-ghost{background:transparent;color:var(--ink-dim);border:1px solid var(--line);font-size:13px;font-weight:600;padding:9px 14px}
+
+  .addbox{display:flex;gap:8px;margin-top:8px}
+  .addbox input{flex:1}
+  .addbox button{white-space:nowrap}
+
+  h2{font-size:16.5px;font-weight:800;margin:26px 0 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  h2 .sub{font-size:12px;color:var(--ink-dim);font-weight:600}
+  .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+  table{border-collapse:collapse;width:100%;min-width:560px;font-size:13.5px}
+  th,td{padding:9px 8px;text-align:center;border-bottom:1px solid rgba(33,95,71,.4)}
+  thead th{background:var(--table);color:var(--ink-dim);font-weight:700;font-size:12.5px}
+  tbody th{background:var(--table);font-weight:700;color:var(--ball);text-align:left;padding-left:12px;white-space:nowrap}
+  td.self{background:rgba(33,95,71,.35)}
+  td.empty{color:#3f6b58}
+  td.big{font-weight:800;color:var(--win)}
+  td.up{color:var(--up);font-weight:800}
+  td.down{color:var(--down);font-weight:700}
+  tr.top1{background:rgba(255,209,102,.10)}
+  tr.top1 th,tr.top1 td{color:var(--win)}
+  tr:last-child td,tr:last-child th{border-bottom:none}
+  .note{font-size:12.5px;color:var(--ink-dim);line-height:1.7;margin-top:14px}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--ball);color:#12241c;font-weight:700;font-size:14px;padding:12px 22px;border-radius:999px;opacity:0;transition:.25s;pointer-events:none;box-shadow:0 6px 24px rgba(0,0,0,.4);max-width:90vw;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  @media (max-width:520px){.sbtn{width:38px;height:38px;font-size:14px}.row .name{font-size:15px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">칠공스 리그</div>
+  <h1>대진표</h1>
+
+  <div class="roundbar" id="roundbar"></div>
+
+  <div class="info">
+    <div class="chip">
+      <b id="roundLabel">라운드 –</b>
+      <span id="roundDesc">–</span>
+      <div class="progress"><i id="roundBar" style="width:0%"></i></div>
+    </div>
+    <div class="chip">
+      <b>다음 정모</b>
+      <span class="gold" id="nextMeet">–</span><br>매월 둘째 금요일
+    </div>
+  </div>
+
+  <div class="crumb">라운드 <b id="crumbRound">–</b> 의 정모 <b id="meetCount">0</b>회 — 정모를 눌러 해당 회차를 입력/조회</div>
+  <div class="meets" id="meets"></div>
+  <div class="net"></div>
+
+  <div class="tabs">
+    <button class="tab active" id="tabInput" onclick="showTab('input')">스코어 입력 · 조회</button>
+    <button class="tab" id="tabBoard" onclick="showTab('board')">라운드 순위 · 대진표</button>
+    <button class="tab" id="tabPlayers" onclick="showTab('players')">선수 관리</button>
+  </div>
+
+  <!-- 입력/조회 -->
+  <section id="paneInput">
+    <div class="crumb">지금 보는 곳: <b id="crumbPath">–</b></div>
+    <div class="lock" id="lockMsg" style="display:none">
+      🔒 지난 정모/라운드 기록입니다. 수정하려면 비밀번호를 입력하세요.
+      <input type="password" id="pw" placeholder="비밀번호" inputmode="numeric">
+      <button class="btn btn-primary" onclick="unlock()">잠금 해제</button>
+    </div>
+    <label for="me">선수 선택</label>
+    <select id="me" onchange="renderRows()"></select>
+    <p class="hint">이 정모에서 상대에게 딴 게임 수. <b style="color:var(--ball)">3</b> = 승리 1승. 대결 안 했으면 ‘–’.</p>
+    <div id="rows"></div>
+    <div class="savebar">
+      <span class="status" id="saveStatus"></span>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveMine()">저장하기</button>
+    </div>
+  </section>
+
+  <!-- 순위 -->
+  <section id="paneBoard" style="display:none">
+    <h2>🏆 순위표 <span class="sub">승수 기준 · <span id="boardScope">–</span></span>
+      <button class="btn btn-ghost" onclick="refresh()">새로고침</button></h2>
+    <div class="tblwrap"><table id="rankTable"></table></div>
+
+    <h2>🌱 진보상 순위 <span class="sub">최근 정모 승률 − 이전 누적 승률</span></h2>
+    <div class="tblwrap"><table id="progTable"></table></div>
+
+    <h2>📊 상대전적 매트릭스 <span class="sub">이 라운드 누적</span></h2>
+    <div class="tblwrap"><table id="matrixTable"></table></div>
+
+    <p class="note">
+      · 승수 = 3점 승리 횟수 / 승률 = 승수÷경기수 / 평균승률 = 정모별 승률의 평균<br>
+      · <b>20승</b> 도달 시 라운드 자동 종료 → 새 라운드 시작<br>
+      · 지난 정모·지난 라운드 수정은 비밀번호 필요. 데이터는 링크를 연 모든 사람이 공유합니다.
+    </p>
+  </section>
+
+  <!-- 선수 관리 -->
+  <section id="panePlayers" style="display:none">
+    <h2>👥 선수 명단 <span class="sub">가나다순 자동 정렬</span></h2>
+    <div class="tblwrap"><table id="playerTable"></table></div>
+    <label for="newName">선수 추가</label>
+    <div class="addbox">
+      <input type="text" id="newName" placeholder="이름 입력 (예: 민수)" maxlength="10">
+      <button class="btn btn-primary" onclick="addPlayer()">추가</button>
+    </div>
+    <p class="note">· 추가된 선수는 모든 화면(입력·순위·매트릭스)에 즉시 반영되며, 전 구성원에게 공유됩니다.<br>· 이미 있는 이름은 추가되지 않습니다.</p>
+  </section>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const WIN_TARGET = 20;
+const PASSWORD = "9880";
+const META_KEY = "ttl-meta-v4";
+const PLAYERS_KEY = "ttl-players";
+const pKey = (round,name)=>`ttl-r${round}:${name}`;
+
+let PLAYERS = [];        // 공유 명단 (가나다순)
+let meta = null;
+let viewRound = 1;
+let viewMeet = null;
+let data = {};
+let draft = {};
+let unlocked = false;    // 비번 통과 여부 (세션 동안 유지)
+
+const sortKo = arr => [...arr].sort((a,b)=>a.localeCompare(b,"ko"));
+
+/* ── 날짜 ── */
+function secondFriday(y,m){
+  const first=new Date(y,m,1);
+  const off=(5-first.getDay()+7)%7;
+  return new Date(y,m,1+off+7);
+}
+const fmt=d=>d.toISOString().slice(0,10);
+const fmtKo=d=>`${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (금)`;
+function nextMeeting(from){
+  let d=secondFriday(from.getFullYear(),from.getMonth());
+  if(d<from) d=secondFriday(from.getFullYear(),from.getMonth()+1);
+  return d;
+}
+function meetingsOf(round){
+  const until = round.ended? new Date(round.ended+"T00:00:00") : new Date();
+  const list=[];
+  let d0=new Date(round.start+"T00:00:00");
+  let d=secondFriday(d0.getFullYear(),d0.getMonth());
+  if(fmt(d)<round.start) d=secondFriday(d.getFullYear(),d.getMonth()+1);
+  while(d<=until){ list.push(fmt(d)); d=secondFriday(d.getFullYear(),d.getMonth()+1); }
+  if(!round.ended) list.push(fmt(d));
+  return list;
+}
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg;t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),2600);
+}
+
+/* ── 시드 (2026-08-14 정모) ── */
+const SEED_DATE="2026-08-14";
+const SEED_PLAYERS=["현식","순연","성빈","우진","석제","병훈","정민","윤수","종원","일택"];
+const SEED={
+  "현식":{"성빈":3,"석제":3,"정민":3,"윤수":1,"종원":3},
+  "순연":{"성빈":3,"우진":3,"석제":3,"정민":3,"윤수":3,"종원":3},
+  "성빈":{"현식":1,"순연":1,"우진":3,"석제":2,"정민":3,"윤수":3,"종원":1,"일택":3},
+  "우진":{"순연":0,"성빈":1,"병훈":0,"정민":2,"윤수":3,"종원":1,"일택":3},
+  "석제":{"현식":0,"순연":0,"성빈":3,"병훈":1,"정민":3,"윤수":1,"종원":1},
+  "병훈":{"우진":3,"석제":3,"정민":3,"윤수":3,"종원":2},
+  "정민":{"현식":2,"순연":0,"성빈":2,"우진":3,"석제":1,"병훈":2,"일택":3},
+  "윤수":{"현식":3,"순연":1,"성빈":2,"우진":1,"석제":3,"병훈":1,"종원":0,"일택":3},
+  "종원":{"현식":2,"순연":2,"성빈":3,"우진":3,"석제":3,"병훈":3,"윤수":3,"일택":3},
+  "일택":{"성빈":1,"우진":0,"정민":0,"윤수":0,"종원":1}
+};
+
+/* ── 저장소 ── */
+async function loadPlayers(){
+  try{
+    const r=await window.storage.get(PLAYERS_KEY,true);
+    PLAYERS = r? sortKo(JSON.parse(r.value)) : null;
+  }catch(e){ PLAYERS=null; }
+  if(!PLAYERS){
+    PLAYERS=sortKo(SEED_PLAYERS);
+    try{ await window.storage.set(PLAYERS_KEY,JSON.stringify(PLAYERS),true); }catch(e){}
+  }
+}
+async function addPlayer(){
+  const input=document.getElementById("newName");
+  const name=input.value.trim();
+  if(!name){ toast("이름을 입력해주세요"); return; }
+  if(PLAYERS.includes(name)){ toast("이미 등록된 선수입니다"); return; }
+  // 최신 명단 재조회 후 병합 (동시 추가 충돌 최소화)
+  try{
+    const r=await window.storage.get(PLAYERS_KEY,true);
+    const fresh=r? JSON.parse(r.value) : PLAYERS;
+    if(!fresh.includes(name)) fresh.push(name);
+    PLAYERS=sortKo(fresh);
+    await window.storage.set(PLAYERS_KEY,JSON.stringify(PLAYERS),true);
+    data[name]=data[name]||{};
+    input.value="";
+    toast(`${name} 선수 추가 완료 👥`);
+    buildPlayerSelect(); renderAll(); renderPlayerTable();
+  }catch(e){ toast("추가 실패 — 다시 시도해주세요"); }
+}
+
+async function loadMeta(){
+  try{
+    const r=await window.storage.get(META_KEY,true);
+    meta=r? JSON.parse(r.value):null;
+  }catch(e){ meta=null; }
+  if(!meta){
+    meta={currentRound:1,rounds:[{no:1,start:SEED_DATE}]};
+    try{ await window.storage.set(META_KEY,JSON.stringify(meta),true); }catch(e){}
+  }
+}
+async function loadRoundData(round){
+  data={};
+  for(const p of PLAYERS){
+    try{
+      const r=await window.storage.get(pKey(round,p),true);
+      data[p]=r? JSON.parse(r.value):null;
+    }catch(e){ data[p]=null; }
+  }
+  if(round===1 && PLAYERS.every(p=>data[p]===null)){
+    for(const p of PLAYERS){
+      data[p]={[SEED_DATE]:SEED[p]||{}};
+      try{ await window.storage.set(pKey(1,p),JSON.stringify(data[p]),true); }catch(e){}
+    }
+  } else {
+    for(const p of PLAYERS) if(data[p]===null) data[p]={};
+  }
+}
+
+/* ── 잠금 규칙 ──
+   자유 수정: 현재 라운드의 "가장 최근(오늘 이전) 정모" + 다가오는 정모
+   비번 필요: 그보다 이전 정모, 또는 지난 라운드 전체            */
+function isLocked(){
+  if(unlocked) return false;
+  if(viewRound!==meta.currentRound) return true;
+  const round=meta.rounds.find(r=>r.no===viewRound);
+  const list=meetingsOf(round);
+  const today=fmt(new Date());
+  const past=list.filter(d=>d<=today);
+  const latest=past.length? past[past.length-1] : null;
+  return !(viewMeet===latest || viewMeet>today);
+}
+function unlock(){
+  const v=document.getElementById("pw").value;
+  if(v===PASSWORD){
+    unlocked=true;
+    document.getElementById("pw").value="";
+    toast("잠금 해제 🔓 — 이제 수정할 수 있어요");
+    renderAll();
+  } else toast("비밀번호가 틀렸습니다");
+}
+
+/* ── 통계 ── */
+function playerStat(p){
+  const meets=data[p]||{};
+  const dates=Object.keys(meets).sort();
+  let wins=0,games=0,rates=[];
+  for(const d of dates){
+    let w=0,g=0;
+    for(const op in meets[d]){
+      if(typeof meets[d][op]!=="number") continue;
+      g++; if(meets[d][op]===3) w++;
+    }
+    if(g>0){ wins+=w; games+=g; rates.push({rate:w/g,w,g}); }
+  }
+  let prog=null;
+  if(rates.length>=2){
+    const last=rates[rates.length-1];
+    let pw=0,pg=0; rates.slice(0,-1).forEach(r=>{pw+=r.w;pg+=r.g;});
+    prog=last.rate-(pg?pw/pg:0);
+  }
+  const avgRate=rates.length? rates.reduce((a,r)=>a+r.rate,0)/rates.length:null;
+  return {name:p,wins,games,rate:games?wins/games:0,avgRate,prog,meetCount:rates.length};
+}
+const allStats=()=>PLAYERS.map(playerStat).sort((a,b)=>b.wins-a.wins||b.rate-a.rate);
+function mergedMatrix(){
+  const m={};
+  for(const p of PLAYERS){
+    m[p]={};
+    for(const d in (data[p]||{}))
+      for(const op in data[p][d]){
+        const v=data[p][d][op];
+        if(typeof v==="number") m[p][op]=(m[p][op]??0)+v;
+      }
+  }
+  return m;
+}
+
+/* ── 라운드 종료 ── */
+async function checkRoundEnd(){
+  if(viewRound!==meta.currentRound) return false;
+  const top=allStats()[0];
+  if(!top||top.wins<WIN_TARGET) return false;
+  try{
+    const r=await window.storage.get(META_KEY,true);
+    const fresh=r? JSON.parse(r.value):meta;
+    if(fresh.currentRound!==meta.currentRound){ meta=fresh; return true; }
+  }catch(e){}
+  const today=new Date();
+  const cur=meta.rounds.find(r=>r.no===meta.currentRound);
+  cur.ended=fmt(today); cur.champion=top.name; cur.wins=top.wins;
+  meta.currentRound+=1;
+  meta.rounds.push({no:meta.currentRound,start:fmt(nextMeeting(today))});
+  try{ await window.storage.set(META_KEY,JSON.stringify(meta),true); }catch(e){}
+  toast(`🏆 ${top.name} ${top.wins}승! 라운드 ${meta.currentRound-1} 종료 → 라운드 ${meta.currentRound} 시작`);
+  return true;
+}
+
+/* ── 저장 ── */
+async function saveMine(){
+  if(isLocked()){ toast("🔒 먼저 비밀번호로 잠금을 해제해주세요"); return; }
+  const me=document.getElementById("me").value;
+  const btn=document.getElementById("saveBtn");
+  btn.disabled=true;
+  try{
+    const mine=data[me]||{};
+    if(Object.keys(draft).length) mine[viewMeet]={...draft};
+    else delete mine[viewMeet];
+    const r=await window.storage.set(pKey(viewRound,me),JSON.stringify(mine),true);
+    if(!r) throw new Error();
+    data[me]=mine;
+    document.getElementById("saveStatus").textContent=
+      new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"})+" 저장됨";
+    toast(`${me} 님 기록 저장 🏓`);
+    const rolled=await checkRoundEnd();
+    if(rolled){ viewRound=meta.currentRound; await loadRoundData(viewRound); pickDefaultMeet(); }
+    renderAll();
+  }catch(e){ toast("저장 실패 — 잠시 후 다시 시도해주세요"); }
+  finally{ btn.disabled=false; }
+}
+
+/* ── 네비게이션 ── */
+async function selectRound(no){
+  viewRound=no;
+  await loadRoundData(no);
+  pickDefaultMeet();
+  renderAll();
+}
+function pickDefaultMeet(){
+  const round=meta.rounds.find(r=>r.no===viewRound);
+  const list=meetingsOf(round);
+  const today=fmt(new Date());
+  const past=list.filter(d=>d<=today);
+  viewMeet=past.length? past[past.length-1]:list[0];
+}
+function selectMeet(d){ viewMeet=d; renderAll(); }
+
+/* ── 렌더 ── */
+function buildPlayerSelect(){
+  const sel=document.getElementById("me");
+  const cur=sel.value;
+  sel.innerHTML="";
+  PLAYERS.forEach(p=>{const o=document.createElement("option");o.value=o.textContent=p;sel.appendChild(o);});
+  if(PLAYERS.includes(cur)) sel.value=cur;
+}
+function renderPlayerTable(){
+  const st=allStats();
+  let h="<thead><tr><th>#</th><th>선수</th><th>이번 라운드 승수</th><th>경기수</th></tr></thead><tbody>";
+  PLAYERS.forEach((p,i)=>{
+    const s=st.find(x=>x.name===p);
+    h+=`<tr><td>${i+1}</td><th scope="row">${p}</th><td class="big">${s?s.wins:0}</td><td>${s?s.games:0}</td></tr>`;
+  });
+  document.getElementById("playerTable").innerHTML=h+"</tbody>";
+}
+
+function renderAll(){
+  const round=meta.rounds.find(r=>r.no===viewRound);
+  const list=meetingsOf(round);
+  const today=fmt(new Date());
+  const locked=isLocked();
+
+  let rb="";
+  meta.rounds.forEach(r=>{
+    const done=r.ended? `<span class="tag">🏆${r.champion}</span>`:`<span class="tag">진행중</span>`;
+    rb+=`<button class="rbtn ${r.no===viewRound?'active':''}" onclick="selectRound(${r.no})">R${r.no}${done}</button>`;
+  });
+  document.getElementById("roundbar").innerHTML=rb;
+
+  const st=allStats();
+  const top=st[0];
+  document.getElementById("roundLabel").textContent=`라운드 ${viewRound}`+(round.ended?" (종료)":"");
+  document.getElementById("roundDesc").innerHTML=round.ended
+    ? `챔피언 <span class="gold">${round.champion} ${round.wins}승</span> · ${round.ended} 종료`
+    : `선두 <span class="accent">${top&&top.games? top.name+" "+top.wins+"승":"기록 없음"}</span> · <span class="accent">${WIN_TARGET}승</span> 도달 시 종료`;
+  document.getElementById("roundBar").style.width=Math.min(100,(top?top.wins:0)/WIN_TARGET*100)+"%";
+  document.getElementById("nextMeet").textContent=fmtKo(nextMeeting(new Date()));
+
+  document.getElementById("crumbRound").textContent=viewRound;
+  document.getElementById("meetCount").textContent=list.filter(d=>d<=today).length;
+  let mh="";
+  list.forEach((d,i)=>{
+    const dt=new Date(d+"T00:00:00");
+    const future=d>today;
+    // 이 정모가 잠금 대상인지 표시
+    const past=list.filter(x=>x<=today);
+    const latest=past.length? past[past.length-1]:null;
+    const needsPw=(viewRound!==meta.currentRound)||!(d===latest||d>today);
+    mh+=`<button class="mbtn ${d===viewMeet?'active':''} ${future?'future':''}" onclick="selectMeet('${d}')">
+      ${i+1}회차${future?" (예정)":""}${needsPw&&!unlocked?'<span class="lockico">🔒</span>':''}<small>${dt.getMonth()+1}/${dt.getDate()} (금)</small></button>`;
+  });
+  document.getElementById("meets").innerHTML=mh;
+
+  const dt=new Date(viewMeet+"T00:00:00");
+  document.getElementById("crumbPath").textContent=
+    `라운드 ${viewRound} → ${list.indexOf(viewMeet)+1}회차 정모 (${dt.getMonth()+1}/${dt.getDate()})`;
+  document.getElementById("lockMsg").style.display=locked?"":"none";
+  document.getElementById("saveBtn").style.display=locked?"none":"";
+  document.getElementById("boardScope").textContent=`라운드 ${viewRound}`;
+  renderRows(); renderBoard(st); renderPlayerTable();
+}
+
+function renderRows(){
+  const me=document.getElementById("me").value;
+  const locked=isLocked();
+  draft={...((data[me]||{})[viewMeet]||{})};
+  const box=document.getElementById("rows");
+  box.innerHTML="";
+  PLAYERS.filter(p=>p!==me).forEach(op=>{
+    const row=document.createElement("div");
+    row.className="row";
+    const cur=(op in draft)?draft[op]:null;
+    let btns="";
+    [null,0,1,2,3].forEach(v=>{
+      const sel=(v===cur)?"sel":"";
+      btns+=`<button class="sbtn ${sel}" ${locked?"disabled":""} onclick="pick('${op}',${v===null?'null':v},this)">${v===null?"–":v}</button>`;
+    });
+    row.innerHTML=`<span class="name">${op}</span><span class="scores">${btns}</span>`;
+    box.appendChild(row);
+  });
+  document.getElementById("saveStatus").textContent="";
+}
+function pick(op,val,el){
+  if(val===null) delete draft[op]; else draft[op]=val;
+  el.parentElement.querySelectorAll(".sbtn").forEach(b=>b.classList.remove("sel"));
+  el.classList.add("sel");
+}
+
+const pct=v=>v===null?"–":Math.round(v*100)+"%";
+function renderBoard(st){
+  st=st||allStats();
+  let rk=1,prev=null;
+  st.forEach((s,i)=>{if(prev!==null&&(s.wins<prev.wins||(s.wins===prev.wins&&s.rate<prev.rate)))rk=i+1;s.rank=rk;prev=s;});
+  const medals={1:"🥇",2:"🥈",3:"🥉"};
+  let html="<thead><tr><th>순위</th><th>선수</th><th>승수</th><th>경기수</th><th>승률</th><th>평균승률</th></tr></thead><tbody>";
+  st.forEach(s=>{
+    html+=`<tr class="${s.rank===1&&s.games?'top1':''}">
+      <td>${medals[s.rank]||s.rank+"위"}</td><th scope="row">${s.name}</th>
+      <td class="big">${s.wins}승</td><td>${s.games}</td>
+      <td>${s.games?pct(s.rate):"–"}</td><td>${pct(s.avgRate)}</td></tr>`;
+  });
+  document.getElementById("rankTable").innerHTML=html+"</tbody>";
+
+  const prog=[...st].sort((a,b)=>{
+    if(a.prog===null&&b.prog===null)return 0;
+    if(a.prog===null)return 1; if(b.prog===null)return -1;
+    return b.prog-a.prog;
+  });
+  let ph="<thead><tr><th>순위</th><th>선수</th><th>승률 변화</th><th>현재 승률</th><th>참가 정모</th></tr></thead><tbody>";
+  prog.forEach((s,i)=>{
+    const delta=s.prog===null?`<td class="empty">비교 대상 없음</td>`
+      :`<td class="${s.prog>=0?'up':'down'}">${s.prog>=0?"▲":"▼"} ${Math.abs(Math.round(s.prog*100))}%p</td>`;
+    ph+=`<tr class="${i===0&&s.prog!==null&&s.prog>0?'top1':''}">
+      <td>${s.prog===null?"–":(i===0&&s.prog>0?"🌱 1위":(i+1)+"위")}</td>
+      <th scope="row">${s.name}</th>${delta}
+      <td>${s.meetCount?pct(s.rate):"–"}</td><td>${s.meetCount}회</td></tr>`;
+  });
+  document.getElementById("progTable").innerHTML=ph+"</tbody>";
+
+  const m=mergedMatrix();
+  let mt="<thead><tr><th>선수</th>";
+  PLAYERS.forEach(p=>mt+=`<th>${p}</th>`);
+  mt+="<th>승수</th></tr></thead><tbody>";
+  PLAYERS.forEach(p=>{
+    mt+=`<tr><th scope="row">${p}</th>`;
+    PLAYERS.forEach(op=>{
+      if(op===p) mt+=`<td class="self"></td>`;
+      else if(op in m[p]) mt+=`<td>${m[p][op]}</td>`;
+      else mt+=`<td class="empty">–</td>`;
+    });
+    const s=st.find(x=>x.name===p);
+    mt+=`<td class="big">${s.wins}</td></tr>`;
+  });
+  document.getElementById("matrixTable").innerHTML=mt+"</tbody>";
+}
+
+function showTab(which){
+  document.getElementById("paneInput").style.display=which==="input"?"":"none";
+  document.getElementById("paneBoard").style.display=which==="board"?"":"none";
+  document.getElementById("panePlayers").style.display=which==="players"?"":"none";
+  document.getElementById("tabInput").classList.toggle("active",which==="input");
+  document.getElementById("tabBoard").classList.toggle("active",which==="board");
+  document.getElementById("tabPlayers").classList.toggle("active",which==="players");
+  if(which==="board") refresh();
+}
+async function refresh(){
+  await loadPlayers();
+  await loadMeta();
+  if(viewRound>meta.currentRound) viewRound=meta.currentRound;
+  await loadRoundData(viewRound);
+  const rolled=await checkRoundEnd();
+  if(rolled){ viewRound=meta.currentRound; await loadRoundData(viewRound); pickDefaultMeet(); }
+  buildPlayerSelect();
+  renderAll();
+}
+
+(async function init(){
+  await loadPlayers();
+  await loadMeta();
+  viewRound=meta.currentRound;
+  await loadRoundData(viewRound);
+  await checkRoundEnd();
+  buildPlayerSelect();
+  pickDefaultMeet();
+  renderAll();
+})();
+</script>
+</body>
+</html>
