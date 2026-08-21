@@ -218,7 +218,8 @@ function secondFriday(y,m){
   const off=(5-first.getDay()+7)%7;
   return new Date(y,m,1+off+7);
 }
-const fmt=d=>d.toISOString().slice(0,10);
+// 로컬(한국) 날짜 기준 YYYY-MM-DD — toISOString은 UTC라서 하루가 밀리는 버그가 있었음
+const fmt=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const fmtKo=d=>`${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (금)`;
 function nextMeeting(from){
   let d=secondFriday(from.getFullYear(),from.getMonth());
