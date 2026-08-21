@@ -70,6 +70,11 @@
   .addbox{display:flex;gap:8px;margin-top:8px}
   .addbox input{flex:1}
   .addbox button{white-space:nowrap}
+  .scopebar{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 10px}
+  .scbtn{padding:9px 18px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink-dim);font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer}
+  .scbtn.active{background:var(--win);border-color:var(--win);color:#1c1207}
+  .delbtn{padding:6px 13px;border-radius:8px;border:1px solid rgba(224,123,123,.5);background:transparent;color:var(--down);font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+  .delbtn:hover{background:rgba(224,123,123,.12)}
 
   h2{font-size:16.5px;font-weight:800;margin:26px 0 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   h2 .sub{font-size:12px;color:var(--ink-dim);font-weight:600}
@@ -140,19 +145,27 @@
   </section>
 
   <section id="paneBoard" style="display:none">
+    <div class="scopebar">
+      <button class="scbtn active" id="scopeRoundBtn" onclick="setScope('round')">라운드 누적</button>
+      <button class="scbtn" id="scopeMeetBtn" onclick="setScope('meet')">선택한 정모만</button>
+    </div>
+    <div class="crumb" id="scopeHint">위의 정모 버튼으로 회차를 고른 뒤 ‘선택한 정모만’을 누르면 그 회차의 결과만 볼 수 있습니다.</div>
+
     <h2>🏆 순위표 <span class="sub">승수 기준 · <span id="boardScope">–</span></span>
       <button class="btn btn-ghost" onclick="refresh()">새로고침</button></h2>
     <div class="tblwrap"><table id="rankTable"></table></div>
 
-    <h2>🌱 진보상 순위 <span class="sub">최근 정모 승률 − 이전 누적 승률</span></h2>
-    <div class="tblwrap"><table id="progTable"></table></div>
+    <div id="progWrap">
+      <h2>🌱 진보상 순위 <span class="sub">최근 정모 승률 − 이전 누적 승률</span></h2>
+      <div class="tblwrap"><table id="progTable"></table></div>
+    </div>
 
-    <h2>📊 상대전적 매트릭스 <span class="sub">이 라운드 누적</span></h2>
+    <h2>📊 상대전적 매트릭스 <span class="sub" id="matrixScope">이 라운드 누적</span></h2>
     <div class="tblwrap"><table id="matrixTable"></table></div>
 
     <p class="note">
       · 승수 = 3점 승리 횟수 / 승률 = 승수÷경기수 / 평균승률 = 정모별 승률의 평균<br>
-      · <b>20승</b> 도달 시 라운드 자동 종료 → 새 라운드 시작<br>
+      · <b>20승</b> 도달 시 라운드 자동 종료 → 새 라운드 시작 (라운드 누적 기준)<br>
       · 누가 저장하면 모든 사람 화면이 실시간으로 갱신됩니다.
     </p>
   </section>
@@ -165,7 +178,8 @@
       <input type="text" id="newName" placeholder="이름 입력 (예: 민수)" maxlength="10">
       <button class="btn btn-primary" onclick="addPlayer()">추가</button>
     </div>
-    <p class="note">· 추가된 선수는 전 구성원에게 즉시 공유됩니다. 이미 있는 이름은 추가되지 않습니다.</p>
+    <p class="note">· 추가된 선수는 전 구성원에게 즉시 공유됩니다. 이미 있는 이름은 추가되지 않습니다.<br>
+      · 삭제 버튼을 누르면 비밀번호 확인 후, 해당 선수의 <b>모든 경기 기록(다른 선수의 상대 전적 포함)</b>이 함께 삭제됩니다.</p>
   </section>
 </div>
 <div class="toast" id="toast"></div>
@@ -184,12 +198,14 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const WIN_TARGET = 20;
 const PASSWORD = "9880";
+const ROUND1_START = "2026-08-14";   // 라운드 1의 첫 정모(1회차) 실제 진행일
 
 let PLAYERS = [];
 let ROUNDS = [];          // [{no, start_date, ended, champion, wins}]
 let currentRound = 1;
 let viewRound = 1;
 let viewMeet = null;
+let viewScope = "round";  // "round"=라운드 누적, "meet"=선택한 정모만
 let data = {};            // {선수: {정모날짜: {상대: 점수}}}
 let draft = {};
 let unlocked = false;
@@ -232,10 +248,32 @@ async function loadPlayers(){
   PLAYERS=sortKo(rows.map(r=>r.name));
 }
 async function loadRounds(){
-  const {data:rows,error}=await sb.from("rounds").select("*").order("no");
+  let {data:rows,error}=await sb.from("rounds").select("*").order("no");
   if(error){ toast("라운드 정보 로드 실패"); console.error(error); return; }
+  if(!rows.length){
+    await sb.from("rounds").insert({no:1,start_date:ROUND1_START});
+    ({data:rows}=await sb.from("rounds").select("*").order("no"));
+    rows=rows||[];
+  }
   ROUNDS=rows;
   currentRound=rows.length? rows[rows.length-1].no : 1;
+}
+
+/* ── 1회성 데이터 교정: 라운드 1의 1회차 정모 = 2026-08-14 ── */
+async function fixRound1Data(){
+  const r1=ROUNDS.find(r=>r.no===1);
+  if(r1&&r1.start_date>ROUND1_START){
+    const up=await sb.from("rounds").update({start_date:ROUND1_START}).eq("no",1);
+    if(!up.error) r1.start_date=ROUND1_START;
+    else console.error(up.error);
+  }
+  // 8/14 결과가 다른 날짜로 잘못 저장된 경우 1회차로 이동
+  // (2회차 정모일인 2026-09-11 이후에는 자동으로 아무 것도 하지 않음)
+  if(fmt(new Date())<"2026-09-11"){
+    const up=await sb.from("scores").update({meet_date:ROUND1_START})
+      .eq("round",1).neq("meet_date",ROUND1_START);
+    if(up.error) console.error(up.error);
+  }
 }
 async function loadRoundData(round){
   const {data:rows,error}=await sb.from("scores").select("*").eq("round",round);
@@ -262,6 +300,22 @@ async function addPlayer(){
   await loadPlayers();
   data[name]=data[name]||{};
   buildPlayerSelect(); renderAll();
+}
+
+async function deletePlayer(name){
+  const pw=prompt(`${name} 선수를 삭제합니다.\n이 선수의 모든 경기 기록(다른 선수의 상대 전적 포함)이 함께 삭제되며 되돌릴 수 없습니다.\n계속하려면 비밀번호를 입력하세요.`);
+  if(pw===null) return;
+  if(pw!==PASSWORD){ toast("비밀번호가 틀렸습니다"); return; }
+  try{
+    let r=await sb.from("scores").delete().eq("player",name);
+    if(r.error) throw r.error;
+    r=await sb.from("scores").delete().eq("opponent",name);
+    if(r.error) throw r.error;
+    r=await sb.from("players").delete().eq("name",name);
+    if(r.error) throw r.error;
+    toast(`${name} 선수 삭제 완료`);
+    await refresh();
+  }catch(e){ console.error(e); toast("삭제 실패 — 잠시 후 다시 시도해주세요"); }
 }
 
 async function saveMine(){
@@ -336,10 +390,10 @@ function unlock(){
   } else toast("비밀번호가 틀렸습니다");
 }
 
-/* ── 통계 ── */
-function playerStat(p){
+/* ── 통계 (onlyDates 를 주면 해당 정모들만 집계, 없으면 라운드 누적) ── */
+function playerStat(p,onlyDates){
   const meets=data[p]||{};
-  const dates=Object.keys(meets).sort();
+  const dates=Object.keys(meets).sort().filter(d=>!onlyDates||onlyDates.includes(d));
   let wins=0,games=0,rates=[];
   for(const d of dates){
     let w=0,g=0;
@@ -357,14 +411,16 @@ function playerStat(p){
   const avgRate=rates.length? rates.reduce((a,r)=>a+r.rate,0)/rates.length:null;
   return {name:p,wins,games,rate:games?wins/games:0,avgRate,prog,meetCount:rates.length};
 }
-const allStats=()=>PLAYERS.map(playerStat).sort((a,b)=>b.wins-a.wins||b.rate-a.rate);
-function mergedMatrix(){
+const allStats=onlyDates=>PLAYERS.map(p=>playerStat(p,onlyDates)).sort((a,b)=>b.wins-a.wins||b.rate-a.rate);
+function mergedMatrix(onlyDates){
   const m={};
   for(const p of PLAYERS){
     m[p]={};
-    for(const d in (data[p]||{}))
+    for(const d in (data[p]||{})){
+      if(onlyDates&&!onlyDates.includes(d)) continue;
       for(const op in data[p][d])
         m[p][op]=(m[p][op]??0)+data[p][d][op];
+    }
   }
   return m;
 }
@@ -435,9 +491,10 @@ function renderAll(){
     `라운드 ${viewRound} → ${list.indexOf(viewMeet)+1}회차 정모 (${dt.getMonth()+1}/${dt.getDate()})`;
   document.getElementById("lockMsg").style.display=locked?"":"none";
   document.getElementById("saveBtn").style.display=locked?"none":"";
-  document.getElementById("boardScope").textContent=`라운드 ${viewRound}`;
-  renderRows(); renderBoard(st); renderPlayerTable(st);
+  renderRows(); renderBoard(); renderPlayerTable(st);
 }
+
+function setScope(s){ viewScope=s; renderBoard(); }
 
 function renderRows(){
   const me=document.getElementById("me").value;
@@ -466,8 +523,32 @@ function pick(op,val,el){
 }
 
 const pct=v=>v===null?"–":Math.round(v*100)+"%";
-function renderBoard(st){
-  st=st||allStats();
+function renderBoard(){
+  const round=ROUNDS.find(r=>r.no===viewRound);
+  const meetOnly=viewScope==="meet";
+  const onlyDates=meetOnly?[viewMeet]:null;
+  const st=allStats(onlyDates);
+
+  // 스코프 토글/라벨
+  document.getElementById("scopeRoundBtn").classList.toggle("active",!meetOnly);
+  document.getElementById("scopeMeetBtn").classList.toggle("active",meetOnly);
+  let meetNo="–",meetDate="";
+  if(round){
+    const list=meetingsOf(round);
+    const idx=list.indexOf(viewMeet);
+    if(idx>=0){
+      const dt=new Date(viewMeet+"T00:00:00");
+      meetNo=idx+1; meetDate=`${dt.getMonth()+1}/${dt.getDate()}`;
+    }
+  }
+  document.getElementById("boardScope").textContent=
+    meetOnly?`라운드 ${viewRound} · ${meetNo}회차 정모 (${meetDate})`:`라운드 ${viewRound} 누적`;
+  document.getElementById("matrixScope").textContent=
+    meetOnly?`${meetNo}회차 정모 (${meetDate})`:"이 라운드 누적";
+  document.getElementById("scopeHint").style.display=meetOnly?"none":"";
+  // 진보상은 정모 간 비교 지표라 누적 화면에서만 표시
+  document.getElementById("progWrap").style.display=meetOnly?"none":"";
+
   let rk=1,prev=null;
   st.forEach((s,i)=>{if(prev!==null&&(s.wins<prev.wins||(s.wins===prev.wins&&s.rate<prev.rate)))rk=i+1;s.rank=rk;prev=s;});
   const medals={1:"🥇",2:"🥈",3:"🥉"};
@@ -496,7 +577,7 @@ function renderBoard(st){
   });
   document.getElementById("progTable").innerHTML=ph+"</tbody>";
 
-  const m=mergedMatrix();
+  const m=mergedMatrix(onlyDates);
   let mt="<thead><tr><th>선수</th>";
   PLAYERS.forEach(p=>mt+=`<th>${p}</th>`);
   mt+="<th>승수</th></tr></thead><tbody>";
@@ -514,10 +595,12 @@ function renderBoard(st){
 }
 function renderPlayerTable(st){
   st=st||allStats();
-  let h="<thead><tr><th>#</th><th>선수</th><th>이번 라운드 승수</th><th>경기수</th></tr></thead><tbody>";
+  let h="<thead><tr><th>#</th><th>선수</th><th>이번 라운드 승수</th><th>경기수</th><th>관리</th></tr></thead><tbody>";
   PLAYERS.forEach((p,i)=>{
     const s=st.find(x=>x.name===p);
-    h+=`<tr><td>${i+1}</td><th scope="row">${p}</th><td class="big">${s?s.wins:0}</td><td>${s?s.games:0}</td></tr>`;
+    const esc=p.replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+    h+=`<tr><td>${i+1}</td><th scope="row">${p}</th><td class="big">${s?s.wins:0}</td><td>${s?s.games:0}</td>
+      <td><button class="delbtn" onclick="deletePlayer('${esc}')">삭제</button></td></tr>`;
   });
   document.getElementById("playerTable").innerHTML=h+"</tbody>";
 }
@@ -558,6 +641,7 @@ function onRemoteChange(){
 (async function init(){
   await loadPlayers();
   await loadRounds();
+  await fixRound1Data();
   viewRound=currentRound;
   await loadRoundData(viewRound);
   buildPlayerSelect();
