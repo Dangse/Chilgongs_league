@@ -20,6 +20,8 @@
   .eyebrow{color:var(--paddle);font-weight:700;font-size:13px;letter-spacing:.12em}
   h1{font-size:clamp(26px,5vw,38px);font-weight:800;margin:4px 0 10px;letter-spacing:-.02em}
   .net{height:2px;background:repeating-linear-gradient(90deg,var(--line) 0 8px,transparent 8px 14px);margin:16px 0 20px}
+  .live{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--up);font-weight:700}
+  .live i{width:8px;height:8px;border-radius:50%;background:var(--up);display:inline-block}
 
   .roundbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
   .rbtn{padding:10px 18px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink-dim);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer}
@@ -40,7 +42,6 @@
   .mbtn.active{border-color:var(--paddle);color:var(--paddle)}
   .mbtn.active small{color:var(--paddle)}
   .mbtn.future{opacity:.55}
-  .mbtn .lockico{margin-left:4px}
   .crumb{font-size:12.5px;color:var(--ink-dim);margin:14px 0 4px}
   .crumb b{color:var(--paddle)}
 
@@ -66,7 +67,6 @@
   .btn-primary{background:var(--paddle);color:#1c1207}
   .btn-primary:disabled{opacity:.5}
   .btn-ghost{background:transparent;color:var(--ink-dim);border:1px solid var(--line);font-size:13px;font-weight:600;padding:9px 14px}
-
   .addbox{display:flex;gap:8px;margin-top:8px}
   .addbox input{flex:1}
   .addbox button{white-space:nowrap}
@@ -96,14 +96,14 @@
 <body>
 <div class="wrap">
   <div class="eyebrow">칠공스 리그</div>
-  <h1>대진표</h1>
+  <h1>대진표 <span class="live" id="liveDot" style="display:none"><i></i>실시간</span></h1>
 
   <div class="roundbar" id="roundbar"></div>
 
   <div class="info">
     <div class="chip">
       <b id="roundLabel">라운드 –</b>
-      <span id="roundDesc">–</span>
+      <span id="roundDesc">불러오는 중…</span>
       <div class="progress"><i id="roundBar" style="width:0%"></i></div>
     </div>
     <div class="chip">
@@ -122,7 +122,6 @@
     <button class="tab" id="tabPlayers" onclick="showTab('players')">선수 관리</button>
   </div>
 
-  <!-- 입력/조회 -->
   <section id="paneInput">
     <div class="crumb">지금 보는 곳: <b id="crumbPath">–</b></div>
     <div class="lock" id="lockMsg" style="display:none">
@@ -140,7 +139,6 @@
     </div>
   </section>
 
-  <!-- 순위 -->
   <section id="paneBoard" style="display:none">
     <h2>🏆 순위표 <span class="sub">승수 기준 · <span id="boardScope">–</span></span>
       <button class="btn btn-ghost" onclick="refresh()">새로고침</button></h2>
@@ -155,11 +153,10 @@
     <p class="note">
       · 승수 = 3점 승리 횟수 / 승률 = 승수÷경기수 / 평균승률 = 정모별 승률의 평균<br>
       · <b>20승</b> 도달 시 라운드 자동 종료 → 새 라운드 시작<br>
-      · 지난 정모·지난 라운드 수정은 비밀번호 필요. 데이터는 링크를 연 모든 사람이 공유합니다.
+      · 누가 저장하면 모든 사람 화면이 실시간으로 갱신됩니다.
     </p>
   </section>
 
-  <!-- 선수 관리 -->
   <section id="panePlayers" style="display:none">
     <h2>👥 선수 명단 <span class="sub">가나다순 자동 정렬</span></h2>
     <div class="tblwrap"><table id="playerTable"></table></div>
@@ -168,29 +165,38 @@
       <input type="text" id="newName" placeholder="이름 입력 (예: 민수)" maxlength="10">
       <button class="btn btn-primary" onclick="addPlayer()">추가</button>
     </div>
-    <p class="note">· 추가된 선수는 모든 화면(입력·순위·매트릭스)에 즉시 반영되며, 전 구성원에게 공유됩니다.<br>· 이미 있는 이름은 추가되지 않습니다.</p>
+    <p class="note">· 추가된 선수는 전 구성원에게 즉시 공유됩니다. 이미 있는 이름은 추가되지 않습니다.</p>
   </section>
 </div>
 <div class="toast" id="toast"></div>
 
+<!-- 수파베이스 공식 JS 라이브러리 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+/* ============================================================
+   ★ URL은 이미 채워져 있습니다. 아래 한 줄의 키만 바꾸세요 ★
+   수파베이스 → Settings → API Keys → anon public 키 복사
+   ============================================================ */
+const SUPABASE_URL = "https://ltsaytneffbgqrmdtvud.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0c2F5dG5lZmZiZ3FybWR0dnVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyODMzNzIsImV4cCI6MjEwMjg1OTM3Mn0._yAfB8juOyVY_JVL05m0mePQRTNewKcrGEWfuYkDDCQ";
+/* ============================================================ */
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 const WIN_TARGET = 20;
 const PASSWORD = "9880";
-const META_KEY = "ttl-meta-v4";
-const PLAYERS_KEY = "ttl-players";
-const pKey = (round,name)=>`ttl-r${round}:${name}`;
 
-let PLAYERS = [];        // 공유 명단 (가나다순)
-let meta = null;
+let PLAYERS = [];
+let ROUNDS = [];          // [{no, start_date, ended, champion, wins}]
+let currentRound = 1;
 let viewRound = 1;
 let viewMeet = null;
-let data = {};
+let data = {};            // {선수: {정모날짜: {상대: 점수}}}
 let draft = {};
-let unlocked = false;    // 비번 통과 여부 (세션 동안 유지)
+let unlocked = false;
 
 const sortKo = arr => [...arr].sort((a,b)=>a.localeCompare(b,"ko"));
 
-/* ── 날짜 ── */
+/* ── 날짜: 둘째 금요일 ── */
 function secondFriday(y,m){
   const first=new Date(y,m,1);
   const off=(5-first.getDay()+7)%7;
@@ -206,9 +212,9 @@ function nextMeeting(from){
 function meetingsOf(round){
   const until = round.ended? new Date(round.ended+"T00:00:00") : new Date();
   const list=[];
-  let d0=new Date(round.start+"T00:00:00");
+  const d0=new Date(round.start_date+"T00:00:00");
   let d=secondFriday(d0.getFullYear(),d0.getMonth());
-  if(fmt(d)<round.start) d=secondFriday(d.getFullYear(),d.getMonth()+1);
+  if(fmt(d)<round.start_date) d=secondFriday(d.getFullYear(),d.getMonth()+1);
   while(d<=until){ list.push(fmt(d)); d=secondFriday(d.getFullYear(),d.getMonth()+1); }
   if(!round.ended) list.push(fmt(d));
   return list;
@@ -219,99 +225,113 @@ function toast(msg){
   setTimeout(()=>t.classList.remove("show"),2600);
 }
 
-/* ── 시드 (2026-08-14 정모) ── */
-const SEED_DATE="2026-08-14";
-const SEED_PLAYERS=["현식","순연","성빈","우진","석제","병훈","정민","윤수","종원","일택"];
-const SEED={
-  "현식":{"성빈":3,"석제":3,"정민":3,"윤수":1,"종원":3},
-  "순연":{"성빈":3,"우진":3,"석제":3,"정민":3,"윤수":3,"종원":3},
-  "성빈":{"현식":1,"순연":1,"우진":3,"석제":2,"정민":3,"윤수":3,"종원":1,"일택":3},
-  "우진":{"순연":0,"성빈":1,"병훈":0,"정민":2,"윤수":3,"종원":1,"일택":3},
-  "석제":{"현식":0,"순연":0,"성빈":3,"병훈":1,"정민":3,"윤수":1,"종원":1},
-  "병훈":{"우진":3,"석제":3,"정민":3,"윤수":3,"종원":2},
-  "정민":{"현식":2,"순연":0,"성빈":2,"우진":3,"석제":1,"병훈":2,"일택":3},
-  "윤수":{"현식":3,"순연":1,"성빈":2,"우진":1,"석제":3,"병훈":1,"종원":0,"일택":3},
-  "종원":{"현식":2,"순연":2,"성빈":3,"우진":3,"석제":3,"병훈":3,"윤수":3,"일택":3},
-  "일택":{"성빈":1,"우진":0,"정민":0,"윤수":0,"종원":1}
-};
-
-/* ── 저장소 ── */
+/* ── DB 읽기 ── */
 async function loadPlayers(){
-  try{
-    const r=await window.storage.get(PLAYERS_KEY,true);
-    PLAYERS = r? sortKo(JSON.parse(r.value)) : null;
-  }catch(e){ PLAYERS=null; }
-  if(!PLAYERS){
-    PLAYERS=sortKo(SEED_PLAYERS);
-    try{ await window.storage.set(PLAYERS_KEY,JSON.stringify(PLAYERS),true); }catch(e){}
+  const {data:rows,error}=await sb.from("players").select("name");
+  if(error){ toast("선수 명단 로드 실패"); console.error(error); return; }
+  PLAYERS=sortKo(rows.map(r=>r.name));
+}
+async function loadRounds(){
+  const {data:rows,error}=await sb.from("rounds").select("*").order("no");
+  if(error){ toast("라운드 정보 로드 실패"); console.error(error); return; }
+  ROUNDS=rows;
+  currentRound=rows.length? rows[rows.length-1].no : 1;
+}
+async function loadRoundData(round){
+  const {data:rows,error}=await sb.from("scores").select("*").eq("round",round);
+  if(error){ toast("점수 로드 실패"); console.error(error); return; }
+  data={};
+  for(const p of PLAYERS) data[p]={};
+  for(const r of rows){
+    if(!data[r.player]) data[r.player]={};
+    if(!data[r.player][r.meet_date]) data[r.player][r.meet_date]={};
+    data[r.player][r.meet_date][r.opponent]=r.games_won;
   }
 }
+
+/* ── DB 쓰기 ── */
 async function addPlayer(){
   const input=document.getElementById("newName");
   const name=input.value.trim();
   if(!name){ toast("이름을 입력해주세요"); return; }
   if(PLAYERS.includes(name)){ toast("이미 등록된 선수입니다"); return; }
-  // 최신 명단 재조회 후 병합 (동시 추가 충돌 최소화)
-  try{
-    const r=await window.storage.get(PLAYERS_KEY,true);
-    const fresh=r? JSON.parse(r.value) : PLAYERS;
-    if(!fresh.includes(name)) fresh.push(name);
-    PLAYERS=sortKo(fresh);
-    await window.storage.set(PLAYERS_KEY,JSON.stringify(PLAYERS),true);
-    data[name]=data[name]||{};
-    input.value="";
-    toast(`${name} 선수 추가 완료 👥`);
-    buildPlayerSelect(); renderAll(); renderPlayerTable();
-  }catch(e){ toast("추가 실패 — 다시 시도해주세요"); }
+  const {error}=await sb.from("players").insert({name});
+  if(error){ toast("추가 실패 (이미 있는 이름일 수 있어요)"); console.error(error); return; }
+  input.value="";
+  toast(`${name} 선수 추가 완료 👥`);
+  await loadPlayers();
+  data[name]=data[name]||{};
+  buildPlayerSelect(); renderAll();
 }
 
-async function loadMeta(){
+async function saveMine(){
+  if(isLocked()){ toast("🔒 먼저 비밀번호로 잠금을 해제해주세요"); return; }
+  const me=document.getElementById("me").value;
+  const btn=document.getElementById("saveBtn");
+  btn.disabled=true;
   try{
-    const r=await window.storage.get(META_KEY,true);
-    meta=r? JSON.parse(r.value):null;
-  }catch(e){ meta=null; }
-  if(!meta){
-    meta={currentRound:1,rounds:[{no:1,start:SEED_DATE}]};
-    try{ await window.storage.set(META_KEY,JSON.stringify(meta),true); }catch(e){}
-  }
-}
-async function loadRoundData(round){
-  data={};
-  for(const p of PLAYERS){
-    try{
-      const r=await window.storage.get(pKey(round,p),true);
-      data[p]=r? JSON.parse(r.value):null;
-    }catch(e){ data[p]=null; }
-  }
-  if(round===1 && PLAYERS.every(p=>data[p]===null)){
-    for(const p of PLAYERS){
-      data[p]={[SEED_DATE]:SEED[p]||{}};
-      try{ await window.storage.set(pKey(1,p),JSON.stringify(data[p]),true); }catch(e){}
+    // 이 (라운드, 정모, 선수)의 기존 줄을 지우고 → 새로 입력한 것을 넣는다
+    const del=await sb.from("scores").delete()
+      .eq("round",viewRound).eq("meet_date",viewMeet).eq("player",me);
+    if(del.error) throw del.error;
+    const rows=Object.entries(draft).map(([op,v])=>({
+      round:viewRound, meet_date:viewMeet, player:me, opponent:op, games_won:v
+    }));
+    if(rows.length){
+      const ins=await sb.from("scores").insert(rows);
+      if(ins.error) throw ins.error;
     }
-  } else {
-    for(const p of PLAYERS) if(data[p]===null) data[p]={};
-  }
+    if(!data[me]) data[me]={};
+    if(rows.length) data[me][viewMeet]={...draft};
+    else delete data[me][viewMeet];
+    document.getElementById("saveStatus").textContent=
+      new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"})+" 저장됨";
+    toast(`${me} 님 기록 저장 🏓`);
+    await checkRoundEnd();
+    renderAll();
+  }catch(e){ console.error(e); toast("저장 실패 — 잠시 후 다시 시도해주세요"); }
+  finally{ btn.disabled=false; }
 }
 
-/* ── 잠금 규칙 ──
-   자유 수정: 현재 라운드의 "가장 최근(오늘 이전) 정모" + 다가오는 정모
-   비번 필요: 그보다 이전 정모, 또는 지난 라운드 전체            */
+/* ── 라운드 종료 (20승) ── */
+async function checkRoundEnd(){
+  if(viewRound!==currentRound) return;
+  const top=allStats()[0];
+  if(!top||top.wins<WIN_TARGET) return;
+  // 다른 사람이 이미 넘겼는지 DB에서 재확인
+  await loadRounds();
+  if(currentRound!==viewRound) return;
+  const today=new Date();
+  const up=await sb.from("rounds").update({
+    ended:fmt(today), champion:top.name, wins:top.wins
+  }).eq("no",currentRound).is("ended",null);
+  if(up.error){ console.error(up.error); return; }
+  const next=currentRound+1;
+  await sb.from("rounds").insert({no:next, start_date:fmt(nextMeeting(today))});
+  toast(`🏆 ${top.name} ${top.wins}승! 라운드 ${currentRound} 종료 → 라운드 ${next} 시작`);
+  await loadRounds();
+  viewRound=currentRound;
+  await loadRoundData(viewRound);
+  pickDefaultMeet();
+}
+
+/* ── 잠금: 현재 라운드의 최신 정모 + 예정 정모만 자유, 나머지 비번 ── */
 function isLocked(){
   if(unlocked) return false;
-  if(viewRound!==meta.currentRound) return true;
-  const round=meta.rounds.find(r=>r.no===viewRound);
+  if(viewRound!==currentRound) return true;
+  const round=ROUNDS.find(r=>r.no===viewRound);
   const list=meetingsOf(round);
   const today=fmt(new Date());
   const past=list.filter(d=>d<=today);
-  const latest=past.length? past[past.length-1] : null;
-  return !(viewMeet===latest || viewMeet>today);
+  const latest=past.length? past[past.length-1]:null;
+  return !(viewMeet===latest||viewMeet>today);
 }
 function unlock(){
   const v=document.getElementById("pw").value;
   if(v===PASSWORD){
     unlocked=true;
     document.getElementById("pw").value="";
-    toast("잠금 해제 🔓 — 이제 수정할 수 있어요");
+    toast("잠금 해제 🔓");
     renderAll();
   } else toast("비밀번호가 틀렸습니다");
 }
@@ -324,7 +344,6 @@ function playerStat(p){
   for(const d of dates){
     let w=0,g=0;
     for(const op in meets[d]){
-      if(typeof meets[d][op]!=="number") continue;
       g++; if(meets[d][op]===3) w++;
     }
     if(g>0){ wins+=w; games+=g; rates.push({rate:w/g,w,g}); }
@@ -344,58 +363,13 @@ function mergedMatrix(){
   for(const p of PLAYERS){
     m[p]={};
     for(const d in (data[p]||{}))
-      for(const op in data[p][d]){
-        const v=data[p][d][op];
-        if(typeof v==="number") m[p][op]=(m[p][op]??0)+v;
-      }
+      for(const op in data[p][d])
+        m[p][op]=(m[p][op]??0)+data[p][d][op];
   }
   return m;
 }
 
-/* ── 라운드 종료 ── */
-async function checkRoundEnd(){
-  if(viewRound!==meta.currentRound) return false;
-  const top=allStats()[0];
-  if(!top||top.wins<WIN_TARGET) return false;
-  try{
-    const r=await window.storage.get(META_KEY,true);
-    const fresh=r? JSON.parse(r.value):meta;
-    if(fresh.currentRound!==meta.currentRound){ meta=fresh; return true; }
-  }catch(e){}
-  const today=new Date();
-  const cur=meta.rounds.find(r=>r.no===meta.currentRound);
-  cur.ended=fmt(today); cur.champion=top.name; cur.wins=top.wins;
-  meta.currentRound+=1;
-  meta.rounds.push({no:meta.currentRound,start:fmt(nextMeeting(today))});
-  try{ await window.storage.set(META_KEY,JSON.stringify(meta),true); }catch(e){}
-  toast(`🏆 ${top.name} ${top.wins}승! 라운드 ${meta.currentRound-1} 종료 → 라운드 ${meta.currentRound} 시작`);
-  return true;
-}
-
-/* ── 저장 ── */
-async function saveMine(){
-  if(isLocked()){ toast("🔒 먼저 비밀번호로 잠금을 해제해주세요"); return; }
-  const me=document.getElementById("me").value;
-  const btn=document.getElementById("saveBtn");
-  btn.disabled=true;
-  try{
-    const mine=data[me]||{};
-    if(Object.keys(draft).length) mine[viewMeet]={...draft};
-    else delete mine[viewMeet];
-    const r=await window.storage.set(pKey(viewRound,me),JSON.stringify(mine),true);
-    if(!r) throw new Error();
-    data[me]=mine;
-    document.getElementById("saveStatus").textContent=
-      new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"})+" 저장됨";
-    toast(`${me} 님 기록 저장 🏓`);
-    const rolled=await checkRoundEnd();
-    if(rolled){ viewRound=meta.currentRound; await loadRoundData(viewRound); pickDefaultMeet(); }
-    renderAll();
-  }catch(e){ toast("저장 실패 — 잠시 후 다시 시도해주세요"); }
-  finally{ btn.disabled=false; }
-}
-
-/* ── 네비게이션 ── */
+/* ── 네비게이션/렌더 ── */
 async function selectRound(no){
   viewRound=no;
   await loadRoundData(no);
@@ -403,7 +377,7 @@ async function selectRound(no){
   renderAll();
 }
 function pickDefaultMeet(){
-  const round=meta.rounds.find(r=>r.no===viewRound);
+  const round=ROUNDS.find(r=>r.no===viewRound);
   const list=meetingsOf(round);
   const today=fmt(new Date());
   const past=list.filter(d=>d<=today);
@@ -411,7 +385,6 @@ function pickDefaultMeet(){
 }
 function selectMeet(d){ viewMeet=d; renderAll(); }
 
-/* ── 렌더 ── */
 function buildPlayerSelect(){
   const sel=document.getElementById("me");
   const cur=sel.value;
@@ -419,24 +392,16 @@ function buildPlayerSelect(){
   PLAYERS.forEach(p=>{const o=document.createElement("option");o.value=o.textContent=p;sel.appendChild(o);});
   if(PLAYERS.includes(cur)) sel.value=cur;
 }
-function renderPlayerTable(){
-  const st=allStats();
-  let h="<thead><tr><th>#</th><th>선수</th><th>이번 라운드 승수</th><th>경기수</th></tr></thead><tbody>";
-  PLAYERS.forEach((p,i)=>{
-    const s=st.find(x=>x.name===p);
-    h+=`<tr><td>${i+1}</td><th scope="row">${p}</th><td class="big">${s?s.wins:0}</td><td>${s?s.games:0}</td></tr>`;
-  });
-  document.getElementById("playerTable").innerHTML=h+"</tbody>";
-}
 
 function renderAll(){
-  const round=meta.rounds.find(r=>r.no===viewRound);
+  const round=ROUNDS.find(r=>r.no===viewRound);
+  if(!round) return;
   const list=meetingsOf(round);
   const today=fmt(new Date());
   const locked=isLocked();
 
   let rb="";
-  meta.rounds.forEach(r=>{
+  ROUNDS.forEach(r=>{
     const done=r.ended? `<span class="tag">🏆${r.champion}</span>`:`<span class="tag">진행중</span>`;
     rb+=`<button class="rbtn ${r.no===viewRound?'active':''}" onclick="selectRound(${r.no})">R${r.no}${done}</button>`;
   });
@@ -453,16 +418,15 @@ function renderAll(){
 
   document.getElementById("crumbRound").textContent=viewRound;
   document.getElementById("meetCount").textContent=list.filter(d=>d<=today).length;
+  const past=list.filter(x=>x<=today);
+  const latest=past.length? past[past.length-1]:null;
   let mh="";
   list.forEach((d,i)=>{
     const dt=new Date(d+"T00:00:00");
     const future=d>today;
-    // 이 정모가 잠금 대상인지 표시
-    const past=list.filter(x=>x<=today);
-    const latest=past.length? past[past.length-1]:null;
-    const needsPw=(viewRound!==meta.currentRound)||!(d===latest||d>today);
+    const needsPw=(viewRound!==currentRound)||!(d===latest||d>today);
     mh+=`<button class="mbtn ${d===viewMeet?'active':''} ${future?'future':''}" onclick="selectMeet('${d}')">
-      ${i+1}회차${future?" (예정)":""}${needsPw&&!unlocked?'<span class="lockico">🔒</span>':''}<small>${dt.getMonth()+1}/${dt.getDate()} (금)</small></button>`;
+      ${i+1}회차${future?" (예정)":""}${needsPw&&!unlocked?' 🔒':''}<small>${dt.getMonth()+1}/${dt.getDate()} (금)</small></button>`;
   });
   document.getElementById("meets").innerHTML=mh;
 
@@ -472,7 +436,7 @@ function renderAll(){
   document.getElementById("lockMsg").style.display=locked?"":"none";
   document.getElementById("saveBtn").style.display=locked?"none":"";
   document.getElementById("boardScope").textContent=`라운드 ${viewRound}`;
-  renderRows(); renderBoard(st); renderPlayerTable();
+  renderRows(); renderBoard(st); renderPlayerTable(st);
 }
 
 function renderRows(){
@@ -548,6 +512,15 @@ function renderBoard(st){
   });
   document.getElementById("matrixTable").innerHTML=mt+"</tbody>";
 }
+function renderPlayerTable(st){
+  st=st||allStats();
+  let h="<thead><tr><th>#</th><th>선수</th><th>이번 라운드 승수</th><th>경기수</th></tr></thead><tbody>";
+  PLAYERS.forEach((p,i)=>{
+    const s=st.find(x=>x.name===p);
+    h+=`<tr><td>${i+1}</td><th scope="row">${p}</th><td class="big">${s?s.wins:0}</td><td>${s?s.games:0}</td></tr>`;
+  });
+  document.getElementById("playerTable").innerHTML=h+"</tbody>";
+}
 
 function showTab(which){
   document.getElementById("paneInput").style.display=which==="input"?"":"none";
@@ -556,28 +529,42 @@ function showTab(which){
   document.getElementById("tabInput").classList.toggle("active",which==="input");
   document.getElementById("tabBoard").classList.toggle("active",which==="board");
   document.getElementById("tabPlayers").classList.toggle("active",which==="players");
-  if(which==="board") refresh();
 }
 async function refresh(){
-  await loadPlayers();
-  await loadMeta();
-  if(viewRound>meta.currentRound) viewRound=meta.currentRound;
+  await loadPlayers(); await loadRounds();
+  if(viewRound>currentRound) viewRound=currentRound;
   await loadRoundData(viewRound);
-  const rolled=await checkRoundEnd();
-  if(rolled){ viewRound=meta.currentRound; await loadRoundData(viewRound); pickDefaultMeet(); }
-  buildPlayerSelect();
-  renderAll();
+  await checkRoundEnd();
+  buildPlayerSelect(); renderAll();
+}
+
+/* ── 실시간: 누가 저장하면 내 화면도 자동 갱신 ── */
+let rtTimer=null;
+function subscribeRealtime(){
+  sb.channel("league-live")
+    .on("postgres_changes",{event:"*",schema:"public",table:"scores"},onRemoteChange)
+    .on("postgres_changes",{event:"*",schema:"public",table:"players"},onRemoteChange)
+    .on("postgres_changes",{event:"*",schema:"public",table:"rounds"},onRemoteChange)
+    .subscribe(status=>{
+      if(status==="SUBSCRIBED") document.getElementById("liveDot").style.display="";
+    });
+}
+function onRemoteChange(){
+  // 여러 변경이 연달아 와도 0.8초에 한 번만 새로고침 (디바운스)
+  clearTimeout(rtTimer);
+  rtTimer=setTimeout(refresh, 800);
 }
 
 (async function init(){
   await loadPlayers();
-  await loadMeta();
-  viewRound=meta.currentRound;
+  await loadRounds();
+  viewRound=currentRound;
   await loadRoundData(viewRound);
-  await checkRoundEnd();
   buildPlayerSelect();
   pickDefaultMeet();
   renderAll();
+  await checkRoundEnd();
+  subscribeRealtime();
 })();
 </script>
 </body>
