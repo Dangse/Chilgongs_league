@@ -142,8 +142,8 @@
       <input type="password" id="pw" placeholder="비밀번호" inputmode="numeric">
       <button class="btn btn-primary" onclick="unlock()">잠금 해제</button>
     </div>
-    <label for="me">선수 선택</label>
-    <select id="me" onchange="renderRows()"></select>
+    <label for="me">선수 선택 <span style="font-weight:400">— 한 번 고르면 이 휴대폰에서는 항상 내 이름이 먼저 나옵니다</span></label>
+    <select id="me" onchange="pickMe()"></select>
     <p class="hint">이 정모에서 상대에게 딴 게임 수. <b style="color:var(--ball)">3</b> = 승리 1승. 대결 안 했으면 ‘–’.</p>
     <div id="rows"></div>
     <div class="savebar">
@@ -450,12 +450,23 @@ function pickDefaultMeet(){
 }
 function selectMeet(d){ viewMeet=d; renderAll(); }
 
+/* ── 내 이름 기억: 이 기기(브라우저)에만 저장 ── */
+function savedMe(){
+  try{ return localStorage.getItem("chilgongs_me"); }catch(e){ return null; }
+}
+function pickMe(){
+  const me=document.getElementById("me").value;
+  try{ localStorage.setItem("chilgongs_me",me); }catch(e){}
+  renderRows();
+}
 function buildPlayerSelect(){
   const sel=document.getElementById("me");
   const cur=sel.value;
   sel.innerHTML="";
   PLAYERS.forEach(p=>{const o=document.createElement("option");o.value=o.textContent=p;sel.appendChild(o);});
+  const saved=savedMe();
   if(PLAYERS.includes(cur)) sel.value=cur;
+  else if(saved&&PLAYERS.includes(saved)) sel.value=saved;
 }
 
 function renderAll(){
